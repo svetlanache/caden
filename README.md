@@ -2,8 +2,8 @@
  
 A package for cross-validated adaptive enrichment signature design (CADEN).<br/>
 The package provides three main funcitons:
-‘simulate_data’ ‘analyse_simdata’ and ‘analyse_realdata’.
-Additional functions are ‘get_stage2’ for simulating a data set for stage 2 based on a data set from stage 2. <br/>
+‘simulate_data’ ‘analyse_simdata’ and ‘analyse_realdata’.<br/>
+Additional function is ‘get_stage2’ for simulating a data set for stage 2 based on a data set from stage 2. <br/>
 simulate_data:<br/>
      The function simulates covariates data and binary responses for stage 2 to be
      used in the analysis of the CADEN design.<br/>
