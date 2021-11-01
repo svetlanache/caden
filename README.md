@@ -15,4 +15,4 @@ analyse_realdata:<br/>
 
 # istallation
 library('devtools')<br/>
-install_github('svetlanache/rapids')
+install_github('svetlanache/caden')
