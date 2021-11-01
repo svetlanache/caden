@@ -1,6 +1,5 @@
 # caden
  
-Cross-validated risk scores adaptive enrichment design (CADEN)
 A package for cross-validated adaptive enrichment signature design (CVASD).<br/>
 The package provides three main funcitons:
 ‘simulate_data’ ‘analyse_simdata’ and ‘analyse_realdata’.
@@ -14,6 +13,6 @@ analyse_simdata:<br/>
 analyse_realdata:<br/>
      The function analyses the real data according to the CADEN design.<br/>
 
-# Istallation
+# istallation
 library('devtools')
 install_github('svetlanache/rapids')
