@@ -52,7 +52,7 @@ analyse_stage1 <- function(datalist_stage1, threshold_overall, threshold_group, 
 
 
 #############################################################
-#' @title 
+#' @title get_model
 #'
 #' @description Compute the coefficients for the risk scores.
 #'             
@@ -126,7 +126,7 @@ get_model <- function(datalist, standardise_cvrs, full_model) {
 }
 
 #############################################################
-#' @title 
+#' @title check_eligibility
 #'
 #' @description Compute the eligibility status for stage 2
 #'             
@@ -162,7 +162,7 @@ check_eligibility <- function(covar, model, standardise_cvrs) {
 }
 
 #############################################################
-#' @title 
+#' @title analyse_subgroup
 #'
 #' @description Compute the treatment effect in the sensitive group
 #'
@@ -196,7 +196,7 @@ analyse_subgroup <- function(datalist, sens_status_predicted) {
 }
 
 #############################################################
-#' @title 
+#' @title get_subgroup
 #'
 #' @description Compute the subgroup memebership, sensitivity, 
 #'              specificity and risk scores.
@@ -338,7 +338,7 @@ get_subgroup <- function(datalist, seed, standardise_cvrs, full_model) {
 }
 
 #############################################################
-#' @title 
+#' @title analyse_stage2
 #'
 #' @description Analyse the stage 2 of the trial
 #'              
@@ -436,7 +436,7 @@ analyse_stage2 <- function(decision, params, model, standardise_cvrs) {
 }
 
 #############################################################
-#' @title 
+#' @title analyse_fisher
 #'
 #' @description Perform Fisher's exact test for the sensitive group
 #'              
