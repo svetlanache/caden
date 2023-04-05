@@ -2,7 +2,7 @@
 % Please edit documentation in R/internal.R
 \name{analyse_stage1}
 \alias{analyse_stage1}
-\title{}
+\title{analyse_stage1}
 \usage{
 analyse_stage1(
   datalist_stage1,

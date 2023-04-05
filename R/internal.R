@@ -1,6 +1,6 @@
 
 #############################################################
-#' @title 
+#' @title analyse_stage1
 #'
 #' @description Perform interim analysis
 #'             

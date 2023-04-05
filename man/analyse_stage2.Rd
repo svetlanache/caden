@@ -2,7 +2,7 @@
 % Please edit documentation in R/internal.R
 \name{analyse_stage2}
 \alias{analyse_stage2}
-\title{}
+\title{analyse_stage2}
 \usage{
 analyse_stage2(decision, params, model, standardise_cvrs)
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/internal.R
 \name{analyse_subgroup}
 \alias{analyse_subgroup}
-\title{}
+\title{analyse_subgroup}
 \usage{
 analyse_subgroup(datalist, sens_status_predicted)
 }

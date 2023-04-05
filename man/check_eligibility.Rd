@@ -2,7 +2,7 @@
 % Please edit documentation in R/internal.R
 \name{check_eligibility}
 \alias{check_eligibility}
-\title{}
+\title{check_eligibility}
 \usage{
 check_eligibility(covar, model, standardise_cvrs)
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/internal.R
 \name{get_subgroup}
 \alias{get_subgroup}
-\title{}
+\title{get_subgroup}
 \usage{
 get_subgroup(datalist, seed, standardise_cvrs, full_model)
 }

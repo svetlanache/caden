@@ -2,7 +2,7 @@
 % Please edit documentation in R/internal.R
 \name{analyse_fisher}
 \alias{analyse_fisher}
-\title{}
+\title{analyse_fisher}
 \usage{
 analyse_fisher(datalist, sens_status_predicted)
 }

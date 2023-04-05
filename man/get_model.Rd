@@ -2,7 +2,7 @@
 % Please edit documentation in R/internal.R
 \name{get_model}
 \alias{get_model}
-\title{}
+\title{get_model}
 \usage{
 get_model(datalist, standardise_cvrs, full_model)
 }
