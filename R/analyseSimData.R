@@ -23,19 +23,24 @@
 #' \code{\link{simulate_data}}, function.
 #' @author Svetlana Cherlin, James Wason
 #' @export analyse_simdata
-#'
-
+#' @importFrom "poolr" "stouffer"
 
 analyse_simdata <- function(param_file, datalist_stage1) {
   datalist <- NULL
   datalist_stage2 <- NULL
   sensitivity <- NA
   specificity <- NA
+  sensitivity_stage2 = NA
+  specificity_stage2 = NA
   noneligible <- NA
-  pval_fisher_group <- NA
+  pval_sens_group <- NA
+  pval_sens_group_stage2 <- NA
   pval_overall <- NA
   ## get simulation parameters
   input <- read.table(param_file, header = F)
+  cvrs <- NA
+  cvrs_stage1 <- NA
+  cvrs_stage2 <- NA
 
   size_stage1 <- as.numeric(input[input == "size_stage1", 2])
   size_stage2 <- as.numeric(input[input == "size_stage2", 2])
@@ -110,47 +115,70 @@ analyse_simdata <- function(param_file, datalist_stage1) {
   }) ## covariate-treatment interation term
 
   params <- list(num_all_var = num_all_var, num_sens_var = num_sens_var, size_stage1 = size_stage1, size_stage2 = size_stage2, m1 = m1, m2 = m2, m0 = m0, sigma1_mtx = sigma1_mtx, sigma2_mtx = sigma2_mtx, sigma0_mtx = sigma0_mtx, perc_sens = perc_sens, mu = mu, lambda = lambda, gamma = gamma, seed = seed)
+  
   ## Stage 1
+  
   res1 <- analyse_stage1(datalist_stage1, threshold_overall, threshold_group, seed, standardise_cvrs, full_model)
   sens_status_predicted <- res1$sens_status_predicted
+  sensitivity_stage1 = res1$sensitivity
+  specificity_stage1 = res1$specificity
+  cvrs_stage1 <- res1$cvrs
+  
+  ## Stage 2
+  
   if (res1$decision != "stop") {
-    ## Stage 2
     res2 <- analyse_stage2(res1$decision, params, res1$model, standardise_cvrs)
     noneligible <- res2$noneligible
-    sens_status_predicted_stage2 <- res2$sens_status_predicted
-    sens_status_predicted <- c(sens_status_predicted, sens_status_predicted_stage2)
     datalist_stage2 <- res2$datalist_stage2
-
-    ## combine Stage 1 and Stage 2
-    datalist <- list(patients = rbind(datalist_stage1$patients, datalist_stage2$patients), covar = rbind(datalist_stage1$covar, datalist_stage2$covar), resp_rate = c(datalist_stage1$resp_rate, datalist_stage2$resp_rate), response = c(datalist_stage1$response, datalist_stage2$response))
+    cvrs_stage2 <- res2$cvrs
   }
 
   ## Final analysis
-  ## for unselected, get the sensitive group and compute the overall effect
+  
+  # for unselected, compute the overall effect and the effect in the sensitive group
   if (res1$decision == "unselected") {
+    datalist <- list(patients = rbind(datalist_stage1$patients, datalist_stage2$patients), 
+                     covar = rbind(datalist_stage1$covar, datalist_stage2$covar), 
+                     resp_rate = c(datalist_stage1$resp_rate, datalist_stage2$resp_rate), 
+                     response = c(datalist_stage1$response, datalist_stage2$response))
     out <- get_subgroup(datalist, seed, standardise_cvrs, full_model)
     sens_status_predicted <- out$sens_status_predicted
     sensitivity <- out$sensitivity
     specificity <- out$specificity
+    cvrs = out$cvrs
+    standardise_cvrs = out$standardise_cvrs
     size_treat <- nrow(datalist$patients[datalist$patients$treat == 1, ])
     size_con <- nrow(datalist$patients[datalist$patients$treat == 0, ])
     pval_overall <- prop.test(
       x = c(sum(datalist$response[datalist$patients$treat == 0]), sum(datalist$response[datalist$patients$treat == 1])),
       n = c(size_con, size_treat), alternative = "two.sided"
     )$p.value
+    pval_sens_group <- analyse_fisher(datalist, sens_status_predicted)
   }
 
-  if (res1$decision != "stop") {
-    ## Fisher's exact test
-    pval_fisher_group <- analyse_fisher(datalist, sens_status_predicted)
+  ## for enrichment, analyse 2 stages separately and combine the p-values
+  if (res1$decision == "enrichment") {
+    sensitivity_stage2 = res2$sensitivity
+    specificity_stage2 = res2$specificity
+    sens_status_predicted <- c(sens_status_predicted, res2$sens_status_predicted)
+    pval_sens_group_stage2 <- analyse_fisher(datalist_stage2, res2$sens_status_predicted)
+    pval_sens_group = stouffer(c(res1$pval_sens_group, pval_sens_group_stage2))[[1]]
   }
-
+  
   output <- list(
     datalist_stage2 = datalist_stage2, decision = res1$decision,
     sens_status_predicted = sens_status_predicted,
+    sensitivity_stage1 = sensitivity_stage1,
+    specificity_stage1 = specificity_stage1,
+    sensitivity_stage2 = sensitivity_stage2,
+    specificity_stage2 = specificity_stage2,
     sensitivity = sensitivity, specificity = specificity,
     noneligible = noneligible, pval_overall = pval_overall,
-    pval_fisher_group = pval_fisher_group
+    pval_overall_stage1 = res1$pval_overall,
+    cvrs = cvrs, cvrs_stage1 = cvrs_stage1, cvrs_stage2 = cvrs_stage2,
+    pval_sens_group_stage1 = res1$pval_sens_group,
+    pval_sens_group_stage2 = pval_sens_group_stage2,
+    pval_sens_group = pval_sens_group
   )
 
   class(output) <- "caden"

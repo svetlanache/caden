@@ -48,7 +48,7 @@ noneligible: Number of patients non-eligible for the trial (for the enrichment s
 
 pval_overall: P-value for the difference between the arm in the overall trial population.
 
-pval_fisher_group: P-value for the difference between the arms in the sensitive group (as assessed using Fisher exact test).
+pval_sens_group: P-value for the difference between the arms in the sensitive group (as assessed using Fisher exact test).
 }
 \description{
 The design has two stages. At the end of stage 1, an interim analysis is performed to test the efficacy of the treatment compared to the control in the overall trial population. If the test in the overall population is significanct, the trial proceeds into stage 2 by analysing all patients (the "unselected" strategy). If the test in the overall population is not significant then the trial proceeds by testing whether there is a subgroup of patients (sensitive group) that show a promising treatment effect. Depending on the results of the test in the sensitive group, the design proceeds into stage 2 according to one of the mutually exclusive strategies "stop" or "enrichment".

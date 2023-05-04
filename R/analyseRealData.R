@@ -24,7 +24,7 @@
 #' @return sens_status_predicted: A vector of the predicted sensitivity status.
 #' @return noneligible: Number of patients non-eligible for the trial (for the enrichment strategy).
 #' @return pval_overall: P-value for the difference between the arm in the overall trial population.
-#' @return pval_fisher_group: P-value for the difference between the arms in the sensitive group (as assessed using Fisher exact test).
+#' @return pval_sens_group: P-value for the difference between the arms in the sensitive group (as assessed using Fisher exact test).
 #'
 #' @examples
 #' data(realdata_stage1)
@@ -39,7 +39,7 @@
 #' \code{\link{simulate_data}}, function.
 #' @author Svetlana Cherlin, James Wason
 #' @export analyse_realdata
-#'
+#' @importFrom "poolr" "stouffer"
 
 analyse_realdata <- function(datalist_stage1, datalist_stage2, threshold_overall, 
                              threshold_group, seed, standardise_cvrs = TRUE, full_model = TRUE) {
@@ -49,58 +49,70 @@ analyse_realdata <- function(datalist_stage1, datalist_stage2, threshold_overall
 
   sens_status_predicted <- NA
   pval_overall <- NA
-  pval_fisher_group <- NA
+  pval_sens_group_stage2 <- NA
+  pval_sens_group <- NA
+  sens_status_predicted2 <- NA
+  
 
   ## Analyse stage 1
   res1 <- analyse_stage1(datalist_stage1, threshold_overall, threshold_group, seed, standardise_cvrs)
   cvrs <- res1$cvrs
   sens_status_predicted <- res1$sens_status_predicted
-
+  pval_overall_stage1 <- res1$pval_overall
+  pval_sens_group_stage1 <- res1$pval_sens_group
+  
+  
   ## Analyse stage 2
-
-  if (res1$decision == "enrichment") {
-    sens_status_predicted2 <- vector(length = nrow(datalist_stage2$patients))
-    eligible <- vector(length = nrow(datalist_stage2$patients))
-    cvrs2 <- vector(length = nrow(datalist_stage2$patients))
-
-    for (i in 1:nrow(datalist_stage2$patients)) {
-      res <- check_eligibility(datalist_stage2$covar[i, ], res1$model, standardise_cvrs)
-      sens_status_predicted2[i] <- res$sens_status_predicted
-      eligible[i] <- res$eligible
-      cvrs2[i] <- res$cvrs
+  if (!(is.na(datalist_stage2))) {
+    if (res1$decision == "enrichment") {
+      sens_status_predicted2 <- vector(length = nrow(datalist_stage2$patients))
+      eligible <- vector(length = nrow(datalist_stage2$patients))
+      cvrs2 <- vector(length = nrow(datalist_stage2$patients))
+  
+      for (i in 1:nrow(datalist_stage2$patients)) {
+        res <- check_eligibility(datalist_stage2$covar[i, ], res1$model, standardise_cvrs)
+        sens_status_predicted2[i] <- res$sens_status_predicted
+        eligible[i] <- res$eligible
+        cvrs2[i] <- res$cvrs
+      }
+  
+      if (sum(eligible == 1) > 0) {
+        patients2 <- datalist_stage2$patients[eligible == 1, ]
+        covar2 <- datalist_stage2$covar[eligible == 1, ]
+        response2 <- datalist_stage2$response[eligible == 1]
+        sens_status_predicted <- c(sens_status_predicted, sens_status_predicted2[eligible == 1])
+        cvrs <- c(cvrs, cvrs2[eligible == 1])
+        ## combine data from the two stages
+        datalist <- list(patients = rbind(datalist_stage1$patients, patients2), covar = rbind(datalist_stage1$covar, covar2), response = c(datalist_stage1$response, response2))
+        pval_sens_group_stage2 <- analyse_fisher(datalist_stage2, sens_status_predicted2)
+        pval_sens_group = stouffer(c(res1$pval_sens_group, pval_sens_group_stage2))[[1]]
+      }
     }
-
-    if (sum(eligible == 1) > 0) {
-      patients2 <- datalist_stage2$patients[eligible == 1, ]
-      covar2 <- datalist_stage2$covar[eligible == 1, ]
-      response2 <- datalist_stage2$response[eligible == 1]
-      sens_status_predicted <- c(sens_status_predicted, sens_status_predicted2[eligible == 1])
-      cvrs <- c(cvrs, cvrs2[eligible == 1])
-      ## combine data from the two stages
-      datalist <- list(patients = rbind(datalist_stage1$patients, patients2), covar = rbind(datalist_stage1$covar, covar2), response = c(datalist_stage1$response, response2))
+  
+    if (res1$decision == "unselected") {
+      datalist <- list(patients = rbind(datalist_stage1$patients, datalist_stage2$patients), covar = rbind(datalist_stage1$covar, datalist_stage2$covar), response = c(datalist_stage1$response, datalist_stage2$response))
+      out <- get_subgroup(datalist, seed, standardise_cvrs, full_model)
+      sens_status_predicted <- out$sens_status_predicted
+      size_treat <- nrow(datalist$patients[datalist$patients$treat == 1, ])
+      size_con <- nrow(datalist$patients[datalist$patients$treat == 0, ])
+      cvrs <- out$cvrs
+      pval_overall <- prop.test(
+        x = c(sum(datalist$response[datalist$patients$treat == 0]), sum(datalist$response[datalist$patients$treat == 1])),
+        n = c(size_con, size_treat), alternative = "two.sided"
+      )$p.value
+      
+      pval_sens_group <- analyse_fisher(datalist, sens_status_predicted)
     }
   }
-
-  if (res1$decision == "unselected") {
-    datalist <- list(patients = rbind(datalist_stage1$patients, datalist_stage2$patients), covar = rbind(datalist_stage1$covar, datalist_stage2$covar), response = c(datalist_stage1$response, datalist_stage2$response))
-    out <- get_subgroup(datalist, seed, standardise_cvrs, full_model)
-    sens_status_predicted <- out$sens_status_predicted
-    size_treat <- nrow(datalist$patients[datalist$patients$treat == 1, ])
-    size_con <- nrow(datalist$patients[datalist$patients$treat == 0, ])
-    cvrs <- out$cvrs
-    pval_overall <- prop.test(
-      x = c(sum(datalist$response[datalist$patients$treat == 0]), sum(datalist$response[datalist$patients$treat == 1])),
-      n = c(size_con, size_treat), alternative = "two.sided"
-    )$p.value
-  }
-
-  if (res1$decision != "stop") {
-    ## Fisher's exact test
-    pval_fisher_group <- analyse_fisher(datalist, sens_status_predicted)
-  }
-
-  output <- list(decision = res1$decision, sens_status_predicted = sens_status_predicted, pval_overall = pval_overall, pval_fisher_group = pval_fisher_group, cvrs = cvrs, standardise_cvrs = standardise_cvrs, full_model = full_model)
-
+  output <-  list(decision = res1$decision, sens_status_predicted = sens_status_predicted, 
+                         pval_overall_stage1 = pval_overall_stage1,
+                         pval_overall = res1$pval_overall, 
+                         pval_sens_group_stage1 = pval_sens_group_stage1, 
+                         pval_overall_stage2 = pval_overall_stage2, 
+                         pval_overall = pval_overall,
+                         cvrs = cvrs, 
+                         standardise_cvrs = standardise_cvrs, full_model = full_model)
+                    
   class(output) <- "caden"
   return(output)
 }

@@ -24,6 +24,10 @@ analyse_stage1 <- function(datalist_stage1, threshold_overall, threshold_group, 
   response <- datalist_stage1$response
   model <- NULL
   sens_status_predicted <- NULL
+  sensitivity <- NA
+  specificity <- NA
+  pval_sens_group = NA
+  cvrs <- NA
 
   ## power for the overall arm comparison
   size_treat <- nrow(patients[patients$treat == 1, ])
@@ -35,9 +39,11 @@ analyse_stage1 <- function(datalist_stage1, threshold_overall, threshold_group, 
 
   if (pval_overall > threshold_overall) {
     res <- get_subgroup(datalist_stage1, seed, standardise_cvrs, full_model)
+    sensitivity = res$sensitivity
+    specificity = res$specificity
     sens_status_predicted <- res$sens_status_predicted
-    pval_treat_group <- analyse_subgroup(datalist_stage1, sens_status_predicted)
-    if (pval_treat_group < threshold_group) {
+    pval_sens_group <- analyse_fisher(datalist_stage1, sens_status_predicted)
+    if (pval_sens_group < threshold_group) {
       model <- get_model(datalist_stage1, standardise_cvrs, full_model)
       decision <- "enrichment"
     } else {
@@ -46,7 +52,9 @@ analyse_stage1 <- function(datalist_stage1, threshold_overall, threshold_group, 
   } else {
     decision <- "unselected"
   }
-  output <- list(decision = decision, sens_status_predicted = sens_status_predicted, model = model)
+  output <- list(decision = decision, sens_status_predicted = sens_status_predicted, 
+                 model = model, sensitivity = sensitivity, specificity = specificity,
+                 pval_overall = pval_overall, pval_sens_group = pval_sens_group, cvrs = res$cvrs)
   return(output)
 }
 
@@ -174,26 +182,28 @@ check_eligibility <- function(covar, model, standardise_cvrs) {
 #' @author Svetlana Cherlin, James Wason
 #############################################################
 
-analyse_subgroup <- function(datalist, sens_status_predicted) {
-  mod <- tryCatch({
-      glm(datalist$response ~ datalist$patients$treat + sens_status_predicted + datalist$patients$treat:sens_status_predicted)
-    },
-    error = function(e) e,
-    warning = function(w) w
-  )
-
-  if (is(mod, "error") | is(mod, "warning")) {
-    pval_treat_group <- 1
-  } else {
-    theta <- as.vector(mod$coeff)
-    temp <- c(0, 0, 1, 1)
-    treat_group <- as.numeric(temp %*% theta) ## treatment effect in the sensitive group
-    var_treat_group <- as.numeric(t(as.matrix(temp)) %*% vcov(mod) %*% as.matrix(temp)) ## sd of the treatment effect in the sensitive group
-    statistic_treat_group <- treat_group / (sqrt(var_treat_group))
-    pval_treat_group <- 2 * pnorm(-abs(statistic_treat_group))
-  }
-  return(pval_treat_group)
-}
+# analyse_subgroup <- function(datalist, sens_status_predicted) {
+#   mod <- tryCatch({
+#       glm(datalist$response ~ datalist$patients$treat + sens_status_predicted + datalist$patients$treat:sens_status_predicted)
+#     },
+#     error = function(e) e,
+#     warning = function(w) w
+#   )
+# 
+#   if (is(mod, "error") | is(mod, "warning")) {
+#     pval_treat_group <- 1
+#   } else {
+#     theta <- as.vector(mod$coeff)
+#     temp <- c(0, 1, 0, 1)
+#     treat_group <- as.numeric(temp %*% theta) ## treatment effect in the sensitive group
+#     var_treat_group <- as.numeric(t(as.matrix(temp)) %*% vcov(mod) %*% as.matrix(temp)) ## sd of the treatment effect in the sensitive group
+#     statistic_treat_group <- treat_group / (sqrt(var_treat_group))
+#     pval_treat_group <- 2 * pnorm(-abs(statistic_treat_group))
+#   }
+#   
+#   print(paste("pval_treat_group is ", pval_treat_group, sep = ""))
+#   return(pval_treat_group)
+# }
 
 #############################################################
 #' @title get_subgroup
@@ -325,8 +335,8 @@ get_subgroup <- function(datalist, seed, standardise_cvrs, full_model) {
         sum(!res$sens_status_predicted & !patients$sens_status), # predicted non.sens, true non.sens [1,1]
         sum(!res$sens_status_predicted & patients$sens_status), # predicted non.sens, true sens [1,2]
         sum(res$sens_status_predicted & !patients$sens_status), # predicted sens, true non. sens [2,1]
-        sum(res$sens_status_predicted & patients$sens_status)
-      ), # predicted sens, true sens [2,2]
+        sum(res$sens_status_predicted & patients$sens_status) # predicted sens, true sens [2,2]
+      ), 
       byrow = TRUE
     )
     sensitivity <- conf[2, 2] / (conf[2, 2] + conf[1, 2])
@@ -371,6 +381,7 @@ analyse_stage2 <- function(decision, params, model, standardise_cvrs) {
   sensitivity <- NA
   specificity <- NA
   eligible <- NULL
+  cvrs <- NA
   i <- 0
   while (i < params$size_stage2) {
 
@@ -390,6 +401,9 @@ analyse_stage2 <- function(decision, params, model, standardise_cvrs) {
       res <- check_eligibility(covar_simulated, model, standardise_cvrs)
       eligible <- c(eligible, res$eligible)
       sens_status_predicted <- c(sens_status_predicted, res$sens_status_predicted)
+      if (res$eligible){
+        cvrs <- c(cvrs, res$cvrs)
+      }
     }
 
     if (eligible[length(eligible)]) {
@@ -407,7 +421,7 @@ analyse_stage2 <- function(decision, params, model, standardise_cvrs) {
   names(covar) <- NULL
   ## For enrichment strategy, compute sensitivity and specificity of the sensitive group
   if (decision == "enrichment") {
-    conf <- matrix(
+      conf <- matrix(
       nrow = 2, ncol = 2,
       data = c(
         sum(!sens_status_predicted & !sens_status), # predicted non.sens, true non.sens [1,1]
@@ -431,7 +445,8 @@ analyse_stage2 <- function(decision, params, model, standardise_cvrs) {
 
   patients <- data.frame(FID = params$size_stage1 + seq(params$size_stage2), IID = params$size_stage1 + seq(params$size_stage2), treat = treat, sens_status = sens_status, stage = rep(2, params$size_stage2))
   datalist_stage2 <- list(patients = patients, covar = covar, resp_rate = resp_rate, response = response)
-  output <- list(datalist_stage2 = datalist_stage2, noneligible = noneligible, sensitivity = sensitivity, specificity = specificity, sens_status_predicted = sens_status_predicted)
+  output <- list(datalist_stage2 = datalist_stage2, noneligible = noneligible, sensitivity = sensitivity, 
+                 specificity = specificity, sens_status_predicted = sens_status_predicted, cvrs = cvrs)
   return(output)
 }
 
@@ -458,8 +473,8 @@ analyse_fisher <- function(datalist, sens_status_predicted) {
       sum(response & !treat), # number of responders in control
       sum(!response & !treat), # number of non-responders in control
       sum(response & treat), # number of responders in treatment
-      sum(!response & treat)
-    ), # number of non-responders in treatment
+      sum(!response & treat) # number of non-responders in treatment
+    ), 
     byrow = TRUE
   )
   pval <- fisher.test(conf, alternative = "two.sided")$p.value
