@@ -39,6 +39,7 @@ analyse_stage1 <- function(datalist_stage1, threshold_overall, threshold_group, 
 
   if (pval_overall > threshold_overall) {
     res <- get_subgroup(datalist_stage1, seed, standardise_cvrs, full_model)
+    cvrs <- res$cvrs
     sensitivity = res$sensitivity
     specificity = res$specificity
     sens_status_predicted <- res$sens_status_predicted
@@ -54,7 +55,7 @@ analyse_stage1 <- function(datalist_stage1, threshold_overall, threshold_group, 
   }
   output <- list(decision = decision, sens_status_predicted = sens_status_predicted, 
                  model = model, sensitivity = sensitivity, specificity = specificity,
-                 pval_overall = pval_overall, pval_sens_group = pval_sens_group, cvrs = res$cvrs)
+                 pval_overall = pval_overall, pval_sens_group = pval_sens_group, cvrs = cvrs)
   return(output)
 }
 
