@@ -13,6 +13,6 @@ analyse_simdata:<br/>
 analyse_realdata:<br/>
      The function analyses the real data according to the CADEN design.<br/>
 
-# istallation
+# installation
 library('devtools')<br/>
 install_github('svetlanache/caden')
