@@ -37,7 +37,8 @@ analyse_simdata <- function(param_file, datalist_stage1) {
   pval_sens_group_stage2 <- NA
   pval_overall <- NA
   ## get simulation parameters
-  input <- read.table(param_file, header = F)
+  input <- read.table(param_file, header = F, fill = TRUE)
+  input <- na.omit(input)
   cvrs <- NA
   cvrs_stage1 <- NA
   cvrs_stage2 <- NA
@@ -59,7 +60,12 @@ analyse_simdata <- function(param_file, datalist_stage1) {
   resp_rate_treat <- as.numeric(input[input == "resp_rate_treat", 2])
   resp_rate_con <- as.numeric(input[input == "resp_rate_con", 2])
   resp_rate_sens_treat <- as.numeric(input[input == "resp_rate_sens_treat", 2])
-  seed <- as.numeric(input[input == "seed", 2])
+  seed = input[input == "seed", 2]
+  if (length(seed) == 0) {seed = as.null()}
+  if (!is.null (seed))
+  {
+     seed <- as.numeric(input[input == "seed", 2])
+  }
   threshold_overall <- as.numeric(input[input == "threshold_overall", 2])
   threshold_group <- as.numeric(input[input == "threshold_group", 2])
   standardise_cvrs <- as.logical(input[input == "standardise_cvrs", 2])
